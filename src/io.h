@@ -3,9 +3,9 @@
 #include "config.h"
 #include "helpers.h"
 
-void leds_init(void);
-void leds_update(const uint16_t grid);
-void buttons_init(void);
-uint16_t scan_buttons_edges(void);
+void io_leds_init(void);
+void io_leds_update(const uint16_t grid);
+void io_buttons_init(void);
+uint16_t io_buttons_scan(void);
 
 #endif // IO_H

@@ -35,26 +35,27 @@ int main(void) {
         go_to_sleep();
 
         // After wake, scan buttons normally
-        uint16_t edges = scan_buttons_edges();
+        uint16_t edges = io_buttons_scan();
 
         if (edges) {
             for (uint8_t r = 0; r < NUM_ROWS; r++) {
                 for (uint8_t c = 0; c < NUM_COLS; c++) {
                     if (edges & (1u << bit_index(r, c))) {
-                        apply_move(r, c);
+                        game_apply_move(r, c);
                     }
                 }
             }
 
-            leds_update(game_get_grid());
+            io_leds_update(game_get_grid());
 
-            if (solved()) {
-                win_blink();                 // game.c will blink + restart
-                leds_update(game_get_grid()); // show new game state after blink
+            if (game_solved()) {
+                game_win_blink();                 // game.c will blink + restart
+                io_leds_update(game_get_grid()); // show new game state after blink
             }
         }
 
         // Small delay to avoid immediate re-sleep during bounce
         _delay_ms(20);
     }
+    return 0;
 }

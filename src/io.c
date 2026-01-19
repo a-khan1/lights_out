@@ -10,14 +10,14 @@ inline void set_led(volatile PORT_t *p, uint8_t mask, bool on) {
     else    p->OUTCLR = mask;
 }
 
-void leds_init(void) {
+void io_leds_init(void) {
     // PB0..PB5 outputs
     PORTB.DIRSET = PIN0_bm | PIN1_bm | PIN2_bm | PIN3_bm | PIN4_bm | PIN5_bm;
     // PC0..PC2 outputs
     PORTC.DIRSET = PIN0_bm | PIN1_bm | PIN2_bm;
 }
 
-void leds_update(const uint16_t grid) {
+void io_leds_update(const uint16_t grid) {
     // Map grid bit N -> LEDN
     set_led(&LED0_PORT, LED0_PIN, (grid >> 0) & 1);
     set_led(&LED1_PORT, LED1_PIN, (grid >> 1) & 1);
@@ -33,7 +33,7 @@ void leds_update(const uint16_t grid) {
 // -------------------------
 // Button matrix scanning
 // -------------------------
-void buttons_init(void) {
+void io_buttons_init(void) {
     // Rows as outputs, idle HIGH
     ROW_PORT.DIRSET = ROW0_PIN | ROW1_PIN | ROW2_PIN;
     ROW_PORT.OUTSET = ROW0_PIN | ROW1_PIN | ROW2_PIN;
@@ -70,7 +70,7 @@ static inline uint8_t read_cols_mask(void) {
 }
 
 // Returns edges: bits that are newly pressed (debounced)
-uint16_t scan_buttons_edges(void) {
+uint16_t io_buttons_scan(void) {
     static uint16_t prev_stable = 0;
     static uint16_t last_sample = 0;
 
