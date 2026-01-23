@@ -6,10 +6,6 @@
 
 static uint16_t grid = 0; // bits 0..8 represent LEDs 0..8
 
-uint16_t game_get_grid(void) {
-    return grid;
-}
-
 static inline void toggle_cell(uint8_t r, uint8_t c) {
     if (r >= NUM_ROWS || c >= NUM_COLS) return;
     grid ^= (1u << bit_index(r, c));
@@ -22,6 +18,7 @@ void game_apply_move(uint8_t r, uint8_t c) {
     if (r < (NUM_ROWS - 1)) toggle_cell(r + 1, c);
     if (c > 0) toggle_cell(r, c - 1);
     if (c < (NUM_COLS - 1)) toggle_cell(r, c + 1);
+    io_leds_update(grid);
 }
 
 void game_init(void) {
@@ -34,7 +31,11 @@ void game_init(void) {
     game_apply_move(1, 1);
     game_apply_move(2, 0);
     game_apply_move(2, 2);
-    io_leds_update(game_get_grid());
+    io_leds_update(grid);
+}
+
+uint16_t game_scan_buttons_edges(void) {
+    return io_buttons_scan();
 }
 
 uint8_t game_solved(void) {
@@ -54,7 +55,7 @@ void game_win_blink(void) {
     }
 
     game_init();
-    // (Don’t call leds_update here if you prefer main to do it;
+    // (Don't call leds_update here if you prefer main to do it;
     // leaving it is fine either way. If you want main to handle all display,
     // just remove the next line.)
     io_leds_update(grid);

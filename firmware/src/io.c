@@ -2,9 +2,7 @@
 #include "config.h"
 #include "helpers.h"
 
-// -------------------------
-// LED control
-// -------------------------
+
 inline void set_led(volatile PORT_t *p, uint8_t mask, bool on) {
     if (on) p->OUTSET = mask;
     else    p->OUTCLR = mask;
@@ -30,42 +28,37 @@ void io_leds_update(const uint16_t grid) {
     set_led(&LED8_PORT, LED8_PIN, (grid >> 8) & 1);
 }
 
-// -------------------------
-// Button matrix scanning
-// -------------------------
+
 void io_buttons_init(void) {
-    // Rows as outputs, idle HIGH
-    ROW_PORT.DIRSET = ROW0_PIN | ROW1_PIN | ROW2_PIN;
-    ROW_PORT.OUTSET = ROW0_PIN | ROW1_PIN | ROW2_PIN;
+    // Columns as outputs, default HIGH
+    COL_PORT.DIRSET = COL0_PIN | COL1_PIN | COL2_PIN;
+    COL_PORT.OUTSET = COL0_PIN | COL1_PIN | COL2_PIN;
 
-    // Cols as inputs with pullups
-    COL_PORT.DIRCLR = COL0_PIN | COL1_PIN | COL2_PIN;
+    // Rows as inputs with pullups
+    ROW_PORT.DIRCLR = ROW0_PIN | ROW1_PIN | ROW2_PIN;
+    PORTA.PIN4CTRL = PORT_PULLUPEN_bm | PORT_ISC_FALLING_gc;
+    PORTA.PIN5CTRL = PORT_PULLUPEN_bm | PORT_ISC_FALLING_gc;
+    PORTA.PIN6CTRL = PORT_PULLUPEN_bm | PORT_ISC_FALLING_gc;
 
-    // Enable pullups on PA1..PA3
-    // Note: PINnCTRL corresponds to the pin number on that port.
-    PORTA.PIN1CTRL = PORT_PULLUPEN_bm|PORT_ISC_FALLING_gc;
-    PORTA.PIN2CTRL = PORT_PULLUPEN_bm|PORT_ISC_FALLING_gc;
-    PORTA.PIN3CTRL = PORT_PULLUPEN_bm|PORT_ISC_FALLING_gc;
 }
 
-static inline void all_rows_high(void) {
-    ROW_PORT.OUTSET = ROW0_PIN | ROW1_PIN | ROW2_PIN;
+static inline void all_cols_high(void) {
+    COL_PORT.OUTSET = COL0_PIN | COL1_PIN | COL2_PIN;
 }
 
-static inline void drive_row_low(uint8_t r) {
-    all_rows_high();
-    if (r == 0) ROW_PORT.OUTCLR = ROW0_PIN;
-    if (r == 1) ROW_PORT.OUTCLR = ROW1_PIN;
-    if (r == 2) ROW_PORT.OUTCLR = ROW2_PIN;
+static inline void drive_col_low(uint8_t c) {
+    all_cols_high();
+    if (c == 0) COL_PORT.OUTCLR = COL0_PIN;
+    if (c == 1) COL_PORT.OUTCLR = COL1_PIN;
+    if (c == 2) COL_PORT.OUTCLR = COL2_PIN;
 }
 
-// Read columns: because of pullups, pressed reads LOW
-static inline uint8_t read_cols_mask(void) {
-    uint8_t in = COL_PORT.IN;
+static inline uint8_t read_rows_mask(void) {
+    uint8_t in = ROW_PORT.IN;
     uint8_t m = 0;
-    if (!(in & COL0_PIN)) m |= (1u << 0);
-    if (!(in & COL1_PIN)) m |= (1u << 1);
-    if (!(in & COL2_PIN)) m |= (1u << 2);
+    if (!(in & ROW0_PIN)) m |= (1u << 0);
+    if (!(in & ROW1_PIN)) m |= (1u << 1);
+    if (!(in & ROW2_PIN)) m |= (1u << 2);
     return m;
 }
 
@@ -76,19 +69,19 @@ uint16_t io_buttons_scan(void) {
 
     uint16_t sample = 0;
 
-    for (uint8_t r = 0; r < NUM_ROWS; r++) {
-        drive_row_low(r);
+    for (uint8_t c = 0; c < NUM_COLS; c++) {
+        drive_col_low(c);
         _delay_us(80); // settle time
 
-        uint8_t cols = read_cols_mask();
-        for (uint8_t c = 0; c < NUM_COLS; c++) {
-            if (cols & (1u << c)) {
+        uint8_t rows = read_rows_mask();
+        for (uint8_t r = 0; r < NUM_ROWS; r++) {
+            if (rows & (1u << r)) {
                 sample |= (1u << bit_index(r, c));
             }
         }
     }
 
-    all_rows_high();
+    all_cols_high();
 
     // debounce: require the bit to appear in two consecutive scans
     uint16_t stable = sample & last_sample;

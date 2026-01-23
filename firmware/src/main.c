@@ -15,6 +15,8 @@
 void go_to_sleep(void) {
     set_sleep_mode(SLEEP_MODE_STANDBY);
     sleep_enable();
+    // Clear any latched pin-change flags before sleeping
+    PORTA.INTFLAGS = 0xFF;
     sei();              // global interrupts ON
     sleep_cpu();        // sleep here
     sleep_disable();    // resumes here after wake
@@ -31,12 +33,14 @@ int main(void) {
     game_init();
 
     while (1) {
-        // Sleep until a button press wakes us
+        // sleep until button interrupt
         go_to_sleep();
 
-        // After wake, scan buttons normally
-        uint16_t edges = io_buttons_scan();
-
+        uint16_t edges = 0;
+        for (uint8_t i = 0; i < 4; i++) {
+            edges |= game_scan_buttons_edges();
+            _delay_ms(5);
+        }
         if (edges) {
             for (uint8_t r = 0; r < NUM_ROWS; r++) {
                 for (uint8_t c = 0; c < NUM_COLS; c++) {
@@ -45,16 +49,11 @@ int main(void) {
                     }
                 }
             }
-
-            io_leds_update(game_get_grid());
-
             if (game_solved()) {
-                game_win_blink();                 // game.c will blink + restart
-                io_leds_update(game_get_grid()); // show new game state after blink
+                game_win_blink();   // game.c will blink + restart
             }
         }
-
-        // Small delay to avoid immediate re-sleep during bounce
+        // 20ms debounce
         _delay_ms(20);
     }
     return 0;

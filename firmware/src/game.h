@@ -7,6 +7,5 @@ void game_win_blink(void);
 uint16_t game_scan_buttons_edges(void);
 uint8_t game_solved(void);
 void game_apply_move(uint8_t r, uint8_t c);
-uint16_t game_get_grid(void);
 
 #endif // GAME_H
