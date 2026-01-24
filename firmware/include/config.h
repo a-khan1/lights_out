@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <util/delay.h>
 
-// LEDs (9 outputs)
 #define LED0_PORT PORTB
 #define LED0_PIN  PIN0_bm
 #define LED1_PORT PORTB
@@ -26,20 +25,29 @@
 #define LED8_PORT PORTC
 #define LED8_PIN  PIN2_bm
 
-// Button matrix: COL inputs (pullup), ROW outputs
 #define COL_PORT PORTA
-#define COL0_PIN PIN1_bm  // PA1
-#define COL1_PIN PIN2_bm  // PA2
-#define COL2_PIN PIN3_bm  // PA3
+#define COL0_PIN PIN1_bm
+#define COL1_PIN PIN2_bm
+#define COL2_PIN PIN3_bm
 
 #define ROW_PORT PORTA
-#define ROW0_PIN PIN4_bm  // PA4
-#define ROW1_PIN PIN5_bm  // PA5
-#define ROW2_PIN PIN6_bm  // PA6
+#define ROW0_PIN PIN4_bm
+#define ROW1_PIN PIN5_bm
+#define ROW2_PIN PIN6_bm
+
+#define DBG_UART_PORT PORTA
+#define DBG_UART_TX_PIN PIN7_bm
+#define DBG_UART_BAUD_RATE 9600u
 
 #define NUM_ROWS 3
 #define NUM_COLS 3
-#define WINNING_NUM_BLINKS 6
-#define WINNING_GAME_STATE 0x0000  // all LEDs off
+#define WINNING_NUM_BLINKS 5
 
-#endif // CONFIG_H
+#define BUTTON_SETTLE_US 80u
+#define BUTTON_DEBOUNCE_SAMPLES 4u
+#define BUTTON_SAMPLE_DELAY_MS 5u
+#define BUTTON_POST_SCAN_DELAY_MS 20u
+#define WIN_BLINK_DELAY_MS 120u
+#define UART_DATA_BITS 8u
+
+#endif
