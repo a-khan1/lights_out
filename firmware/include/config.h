@@ -53,6 +53,7 @@ Various configuration parameters for the game, including pin assignments, and ga
 #define WIN_BLINK_DELAY_MS 250u
 #define US_PER_S 1000000UL
 #define ALL_ON_MASK 0x01FFu
+#define DEBUG_MODE 0u
 
 #define GAME_INIT_RANDOM_MOVES 5u
 #define TIMER_SEED_PRESC TCA_SINGLE_CLKSEL_DIV64_gc

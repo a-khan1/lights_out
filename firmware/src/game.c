@@ -53,7 +53,7 @@ static void win_blink(void) {
 void game_init(void) {
     io_leds_init();
     io_buttons_init();
-    #if DEBUG
+    #if DEBUG_MODE
     // Startup LED test: toggle each LED in order (LED0 -> LED8).
     io_leds_update(grid);
     grid = WINNING_GAME_STATE;
@@ -66,7 +66,12 @@ void game_init(void) {
 
     grid = WINNING_GAME_STATE;
     timer_init();
+    // Use a button press timing to seed randomness so it changes each boot.
+    io_sleep_until_button();
     uint16_t seed = random_generate();
+    while (io_buttons_read() != 0) {
+        _delay_ms(BUTTON_SAMPLE_DELAY_MS);
+    }
     for (uint8_t i = 0; i < GAME_INIT_RANDOM_MOVES; i++) {
         uint8_t r = (uint8_t)((seed + i) % NUM_ROWS);
         uint8_t c = (uint8_t)(((seed >> 8) + i) % NUM_COLS);
@@ -85,8 +90,19 @@ void game_init(void) {
 
 void game_update(void) {
     io_sleep_until_button();
-    // capture button input
-    uint16_t pressed_mask = io_buttons_read();
+    // capture button input with enough samples to satisfy debounce
+    uint16_t pressed_mask = 0;
+    for (uint8_t i = 0; i < BUTTON_DEBOUNCE_SAMPLES; i++) {
+        pressed_mask = io_buttons_read();
+        if (pressed_mask) break;
+        _delay_ms(BUTTON_SAMPLE_DELAY_MS);
+    }
+    #if DEBUG_MODE
+    if (pressed_mask) {
+        grid ^= pressed_mask;
+        io_leds_update(grid);
+    }
+    #else
     // use button input to update game state
     if (pressed_mask) {
         for (uint8_t r = 0; r < NUM_ROWS; r++) {
@@ -101,5 +117,9 @@ void game_update(void) {
             win_blink();
         }
     }
-    _delay_ms(BUTTON_SAMPLE_DELAY_MS);
+    #endif
+    // wait for release so the next press can be detected after sleep
+    while (io_buttons_read() != 0) {
+        _delay_ms(BUTTON_SAMPLE_DELAY_MS);
+    }
 }

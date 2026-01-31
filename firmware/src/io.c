@@ -7,9 +7,9 @@ static inline uint8_t grid_index(uint8_t r, uint8_t c) {
     return (uint8_t)(r * NUM_COLS + c);
 }
 
-static inline void set_led(volatile PORT_t *p, uint8_t mask, bool on) {
-    if (on) p->OUTSET = mask;
-    else    p->OUTCLR = mask;
+static inline void set_led(volatile PORT_t *p, uint8_t pin, bool on) {
+    if (on) p->OUTSET = pin;
+    else    p->OUTCLR = pin;
 }
 
 void io_leds_init(void) {
@@ -51,7 +51,7 @@ static void io_buttons_prepare_sleep(void) {
 }
 
 static void io_sleep(void) {
-    set_sleep_mode(SLEEP_MODE_STANDBY);
+    set_sleep_mode(SLEEP_MODE_IDLE);
     sleep_enable();
     PORTA.INTFLAGS = 0xFF;
     sei();
@@ -79,6 +79,7 @@ static inline uint8_t read_rows_mask(void) {
     return m;
 }
 
+// scan button matrix and return pressed buttons
 static uint16_t scan_buttons(void) {
     uint16_t sample = 0;
 
@@ -98,10 +99,10 @@ static uint16_t scan_buttons(void) {
     return sample;
 }
 
+// read buttons with debouncing (returns stable level)
 uint16_t io_buttons_read(void) {
     static uint16_t stable = 0;
     static uint8_t stable_count = 0;
-    static uint8_t latched = 0;
 
     uint16_t sample = scan_buttons();
     if (sample == stable) {
@@ -113,21 +114,18 @@ uint16_t io_buttons_read(void) {
         stable_count = 0;
     }
 
-    uint16_t edges = 0;
-    if (!latched && stable && stable_count >= (BUTTON_DEBOUNCE_SAMPLES - 1)) {
-        latched = 1;
-        edges = stable;
+    if (stable_count >= (BUTTON_DEBOUNCE_SAMPLES - 1)) {
+        return stable;
     }
-    if (latched && stable == 0 && stable_count >= (BUTTON_DEBOUNCE_SAMPLES - 1)) {
-        latched = 0;
-    }
-
-    return edges;
+    return 0;
 }
 
 void io_sleep_until_button(void) {
     io_buttons_prepare_sleep();
-    io_sleep();
+    _delay_us(BUTTON_SETTLE_US);
+    if (read_rows_mask() == 0u) {
+        io_sleep();
+    }
 }
 
 // Software UART implementation for debugging
