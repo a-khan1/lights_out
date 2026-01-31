@@ -1,9 +1,11 @@
 #include "io.h"
 #include "config.h"
-#include "helpers.h"
 
+static inline uint8_t grid_index(uint8_t r, uint8_t c) {
+    return (uint8_t)(r * NUM_COLS + c);
+}
 
-inline void set_led(volatile PORT_t *p, uint8_t mask, bool on) {
+static inline void set_led(volatile PORT_t *p, uint8_t mask, bool on) {
     if (on) p->OUTSET = mask;
     else    p->OUTCLR = mask;
 }
@@ -41,10 +43,6 @@ static inline void all_cols_high(void) {
     COL_PORT.OUTSET = COL0_PIN | COL1_PIN | COL2_PIN;
 }
 
-void io_buttons_prepare_sleep(void) {
-    COL_PORT.OUTCLR = COL0_PIN | COL1_PIN | COL2_PIN;
-}
-
 static inline void drive_col_low(uint8_t c) {
     all_cols_high();
     if (c == 0u) COL_PORT.OUTCLR = COL0_PIN;
@@ -61,10 +59,7 @@ static inline uint8_t read_rows_mask(void) {
     return m;
 }
 
-uint16_t io_buttons_scan(void) {
-    static uint16_t prev_stable = 0;
-    static uint16_t last_sample = 0;
-
+static uint16_t buttons_read_raw(void) {
     uint16_t sample = 0;
 
     for (uint8_t c = 0; c < NUM_COLS; c++) {
@@ -80,44 +75,69 @@ uint16_t io_buttons_scan(void) {
     }
 
     all_cols_high();
+    return sample;
+}
 
-    uint16_t stable = sample & last_sample;
-    last_sample = sample;
+uint16_t io_buttons_read(void) {
+    static uint16_t stable = 0;
+    static uint8_t stable_count = 0;
+    static uint8_t latched = 0;
 
-    uint16_t edges = stable & ~prev_stable;
-    prev_stable = stable;
+    uint16_t sample = buttons_read_raw();
+    if (sample == stable) {
+        if (stable_count < BUTTON_DEBOUNCE_SAMPLES) {
+            stable_count++;
+        }
+    } else {
+        stable = sample;
+        stable_count = 0;
+    }
+
+    uint16_t edges = 0;
+    if (!latched && stable && stable_count >= (BUTTON_DEBOUNCE_SAMPLES - 1)) {
+        latched = 1;
+        edges = stable;
+    }
+    if (latched && stable == 0 && stable_count >= (BUTTON_DEBOUNCE_SAMPLES - 1)) {
+        latched = 0;
+    }
 
     return edges;
 }
 
-static inline void softuart_delay_bit(void) {
-    _delay_us((US_PER_S + (DBG_UART_BAUD_RATE / 2u)) / DBG_UART_BAUD_RATE);
-}
-
 // Software UART implementation for debugging
-
 void io_debug_uart_init(void) {
     DBG_UART_PORT.DIRSET = DBG_UART_TX_PIN;
     DBG_UART_PORT.OUTSET = DBG_UART_TX_PIN;
 }
 
-void io_debug_uart_write_byte(uint8_t byte) {
-    DBG_UART_PORT.OUTCLR = DBG_UART_TX_PIN;
-    softuart_delay_bit();
+static inline void uart_delay_bit(void) {
+    _delay_us(US_PER_S / DBG_UART_BAUD_RATE);
+}
 
-    for (uint8_t i = 0; i < UART_DATA_BITS; i++) {
-        if (byte & 0x01u) DBG_UART_PORT.OUTSET = DBG_UART_TX_PIN;
-        else              DBG_UART_PORT.OUTCLR = DBG_UART_TX_PIN;
-        softuart_delay_bit();
+static void uart_write_byte(uint8_t byte) {
+    DBG_UART_PORT.OUTCLR = DBG_UART_TX_PIN;
+    uart_delay_bit();
+
+    // transmit the byte LSB first over GPIO
+    for (uint8_t i = 0; i < 8u; i++) {
+        if (byte & 1u){ 
+            DBG_UART_PORT.OUTSET = DBG_UART_TX_PIN;
+        }
+        else{             
+            DBG_UART_PORT.OUTCLR = DBG_UART_TX_PIN;
+        }
+        uart_delay_bit();
         byte >>= 1;
     }
 
     DBG_UART_PORT.OUTSET = DBG_UART_TX_PIN;
-    softuart_delay_bit();
+    uart_delay_bit();
 }
 
-void io_debug_uart_write_str(const char *s) {
-    while (*s) {
-        io_debug_uart_write_byte((uint8_t)*s++);
+void io_debug_uart_write(const uint8_t *buf, uint16_t len) {
+    if (!buf || len == 0u) return;
+    for (uint16_t i = 0; i < len; i++) {
+        uart_write_byte(buf[i]);
     }
 }

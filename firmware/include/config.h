@@ -1,5 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
+/*
+Various configuration parameters for the game, including pin assignments, and game settings.
+*/
+
 
 #include <avr/io.h>
 #include <stdbool.h>
@@ -41,13 +45,18 @@
 
 #define NUM_ROWS 3
 #define NUM_COLS 3
-#define WINNING_NUM_BLINKS 5
+#define WINNING_NUM_BLINKS 4
 
 #define BUTTON_SETTLE_US 80u
 #define BUTTON_DEBOUNCE_SAMPLES 4u
 #define BUTTON_SAMPLE_DELAY_MS 5u
-#define BUTTON_POST_SCAN_DELAY_MS 20u
-#define WIN_BLINK_DELAY_MS 120u
-#define UART_DATA_BITS 8u
+#define WIN_BLINK_DELAY_MS 250u
+#define US_PER_S 1000000UL
+#define ALL_ON_MASK 0x01FFu
+
+#define GAME_INIT_RANDOM_MOVES 5u
+#define TIMER_SEED_PRESC TCA_SINGLE_CLKSEL_DIV64_gc
+
+#define DEBUG false
 
 #endif
