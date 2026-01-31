@@ -84,6 +84,7 @@ void game_init(void) {
 }
 
 void game_update(void) {
+    io_sleep_until_button();
     // capture button input
     uint16_t pressed_mask = io_buttons_read();
     // use button input to update game state

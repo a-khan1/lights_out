@@ -1,5 +1,7 @@
 #include "io.h"
 #include "config.h"
+#include <avr/sleep.h>
+#include <avr/interrupt.h>
 
 static inline uint8_t grid_index(uint8_t r, uint8_t c) {
     return (uint8_t)(r * NUM_COLS + c);
@@ -43,6 +45,24 @@ static inline void all_cols_high(void) {
     COL_PORT.OUTSET = COL0_PIN | COL1_PIN | COL2_PIN;
 }
 
+// drive all columns low so they trigger falling edge on rows when button is pressed.
+static void io_buttons_prepare_sleep(void) {
+    COL_PORT.OUTCLR = COL0_PIN | COL1_PIN | COL2_PIN;
+}
+
+static void io_sleep(void) {
+    set_sleep_mode(SLEEP_MODE_STANDBY);
+    sleep_enable();
+    PORTA.INTFLAGS = 0xFF;
+    sei();
+    sleep_cpu();
+    sleep_disable();
+}
+
+ISR(PORTA_PORT_vect) {
+    PORTA.INTFLAGS = 0xFF;
+}
+
 static inline void drive_col_low(uint8_t c) {
     all_cols_high();
     if (c == 0u) COL_PORT.OUTCLR = COL0_PIN;
@@ -59,7 +79,7 @@ static inline uint8_t read_rows_mask(void) {
     return m;
 }
 
-static uint16_t buttons_read_raw(void) {
+static uint16_t scan_buttons(void) {
     uint16_t sample = 0;
 
     for (uint8_t c = 0; c < NUM_COLS; c++) {
@@ -83,7 +103,7 @@ uint16_t io_buttons_read(void) {
     static uint8_t stable_count = 0;
     static uint8_t latched = 0;
 
-    uint16_t sample = buttons_read_raw();
+    uint16_t sample = scan_buttons();
     if (sample == stable) {
         if (stable_count < BUTTON_DEBOUNCE_SAMPLES) {
             stable_count++;
@@ -103,6 +123,11 @@ uint16_t io_buttons_read(void) {
     }
 
     return edges;
+}
+
+void io_sleep_until_button(void) {
+    io_buttons_prepare_sleep();
+    io_sleep();
 }
 
 // Software UART implementation for debugging
